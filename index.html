@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1B3A4B">
+<meta name="description" content="Gestione interventi di manutenzione per immobili">
+<title>ManuTrack · Manutenzione Immobili</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ManuTrack">
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --navy-900:#132a37;
+  --navy-800:#1B3A4B;
+  --navy-700:#25516a;
+  --navy-100:#e6edf1;
+  --paper:#F5F3EE;
+  --surface:#FFFFFF;
+  --ink:#1A1D1F;
+  --ink-muted:#65707A;
+  --ink-faint:#98A1A8;
+  --line:#E2DFD6;
+  --amber:#E8A33D;
+  --amber-ink:#7A4E0C;
+  --amber-bg:#FBECD3;
+  --red:#C1443C;
+  --red-ink:#7A231D;
+  --red-bg:#F7E1DE;
+  --green:#2E7D5B;
+  --green-ink:#1C4E39;
+  --green-bg:#DEEDE5;
+  --blue-bg:#E4ECF1;
+  --grey-bg:#EDEBE4;
+  --radius-s:6px;
+  --radius-m:10px;
+  --radius-l:16px;
+  --shadow-1:0 1px 2px rgba(19,42,55,.08), 0 1px 1px rgba(19,42,55,.04);
+  --shadow-2:0 8px 24px rgba(19,42,55,.18);
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+  --font: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:var(--font);
+  background:var(--paper);
+  color:var(--ink);
+  -webkit-tap-highlight-color:transparent;
+  overscroll-behavior-y:none;
+  min-height:100vh;
+  min-height:100dvh;
+}
+button,input,select,textarea{font-family:inherit;font-size:16px;}
+button{cursor:pointer;}
+h1,h2,h3,h4{margin:0;font-weight:700;letter-spacing:-0.01em;}
+p{margin:0;}
+a{color:inherit;}
+::-webkit-scrollbar{width:0;height:0;}
+
+/* ============ APP SHELL ============ */
+#app{
+  display:flex;
+  flex-direction:column;
+  min-height:100vh;
+  min-height:100dvh;
+  max-width:1100px;
+  margin:0 auto;
+  position:relative;
+}
+.topbar{
+  position:sticky;top:0;z-index:20;
+  background:var(--navy-800);
+  color:#fff;
+  padding:calc(14px + var(--safe-top)) 16px 14px;
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:var(--shadow-1);
+}
+.topbar h1{font-size:19px;color:#fff;}
+.topbar .subtitle{font-size:12px;color:#B9CBD4;margin-top:2px;font-weight:500;}
+.topbar-actions{display:flex;gap:8px;}
+.icon-btn{
+  width:38px;height:38px;border-radius:50%;
+  background:rgba(255,255,255,.12);
+  border:none;color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.icon-btn:active{background:rgba(255,255,255,.24);}
+
+main{
+  flex:1;
+  padding:14px 14px calc(96px + var(--safe-bottom));
+}
+
+/* bottom tab nav */
+.tabbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:30;
+  max-width:1100px;margin:0 auto;
+  background:var(--surface);
+  border-top:1px solid var(--line);
+  display:flex;
+  padding-bottom:var(--safe-bottom);
+  box-shadow:0 -2px 10px rgba(19,42,55,.08);
+}
+.tab-btn{
+  flex:1;background:none;border:none;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:9px 2px 8px;
+  color:var(--ink-faint);
+}
+.tab-btn svg{width:22px;height:22px;}
+.tab-btn span{font-size:10.5px;font-weight:600;letter-spacing:.01em;}
+.tab-btn.active{color:var(--navy-800);}
+.tab-btn.active svg{color:var(--amber-ink);}
+
+/* FAB */
+.fab{
+  position:fixed;right:calc(18px + (100vw - min(100vw,1100px))/2);
+  bottom:calc(84px + var(--safe-bottom));
+  z-index:25;
+  width:56px;height:56px;border-radius:50%;
+  background:var(--amber);color:var(--navy-900);
+  border:none;box-shadow:var(--shadow-2);
+  display:flex;align-items:center;justify-content:center;
+}
+.fab svg{width:26px;height:26px;}
+.fab:active{transform:scale(.95);}
+
+/* ============ SECTIONS ============ */
+.view{display:none;}
+.view.active{display:block;animation:fadein .18s ease;}
+@keyframes fadein{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+.section-title{
+  font-size:13px;text-transform:none;color:var(--ink-muted);
+  font-weight:700;margin:18px 2px 8px;
+}
+.section-title:first-child{margin-top:2px;}
+
+/* filter chips */
+.chiprow{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 4px;margin-bottom:10px;}
+.chip{
+  flex-shrink:0;
+  border:1px solid var(--line);background:var(--surface);
+  border-radius:20px;padding:7px 14px;font-size:13px;font-weight:600;
+  color:var(--ink-muted);
+}
+.chip.active{background:var(--navy-800);border-color:var(--navy-800);color:#fff;}
+
+/* search */
+.searchbar{
+  display:flex;align-items:center;gap:8px;
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--radius-m);padding:9px 12px;margin-bottom:12px;
+}
+.searchbar svg{width:17px;height:17px;color:var(--ink-faint);flex-shrink:0;}
+.searchbar input{border:none;outline:none;background:none;width:100%;color:var(--ink);}
+
+/* cards */
+.card{
+  background:var(--surface);
+  border-radius:var(--radius-m);
+  border:1px solid var(--line);
+  margin-bottom:10px;
+  overflow:hidden;
+  box-shadow:var(--shadow-1);
+}
+.ilist-item{
+  display:flex;gap:0;border-left:4px solid var(--ink-faint);
+}
+.ilist-item.p-bassa{border-left-color:#A9B4BC;}
+.ilist-item.p-media{border-left-color:#3E7CA6;}
+.ilist-item.p-alta{border-left-color:var(--amber);}
+.ilist-item.p-urgente{border-left-color:var(--red);}
+.ilist-item.is-overdue{background:var(--red-bg);}
+.ilist-body{flex:1;padding:12px 13px;min-width:0;}
+.ilist-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;}
+.ilist-title{font-size:15px;font-weight:700;line-height:1.3;}
+.ilist-meta{font-size:12.5px;color:var(--ink-muted);margin-top:3px;display:flex;flex-wrap:wrap;gap:4px 8px;}
+.ilist-due{font-size:12.5px;font-weight:700;white-space:nowrap;flex-shrink:0;}
+.due-overdue{color:var(--red-ink);}
+.due-soon{color:var(--amber-ink);}
+.due-ok{color:var(--ink-muted);}
+.tag{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;
+}
+.tag-bassa{background:var(--grey-bg);color:#525C63;}
+.tag-media{background:var(--blue-bg);color:#274A63;}
+.tag-alta{background:var(--amber-bg);color:var(--amber-ink);}
+.tag-urgente{background:var(--red-bg);color:var(--red-ink);}
+.tag-da_fare{background:var(--grey-bg);color:#525C63;}
+.tag-in_corso{background:var(--blue-bg);color:#274A63;}
+.tag-completato{background:var(--green-bg);color:var(--green-ink);}
+.tag-annullato{background:var(--grey-bg);color:#8B8577;text-decoration:line-through;}
+
+.empty-state{
+  text-align:center;padding:46px 20px;color:var(--ink-muted);
+}
+.empty-state svg{width:44px;height:44px;color:var(--ink-faint);margin-bottom:10px;}
+.empty-state h3{font-size:15px;color:var(--ink);margin-bottom:4px;}
+.empty-state p{font-size:13px;line-height:1.5;}
+
+/* property card */
+.prop-card{padding:14px;}
+.prop-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+.prop-name{font-size:16px;font-weight:700;}
+.prop-addr{font-size:13px;color:var(--ink-muted);margin-top:2px;}
+.prop-stats{display:flex;gap:14px;margin-top:10px;font-size:12.5px;color:var(--ink-muted);}
+.prop-stats b{color:var(--ink);font-weight:700;}
+
+/* supplier card */
+.sup-card{padding:13px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;}
+.sup-name{font-weight:700;font-size:15px;}
+.sup-spec{font-size:12.5px;color:var(--ink-muted);margin-top:2px;}
+.sup-contact{display:flex;gap:8px;}
+.sup-contact a{
+  width:34px;height:34px;border-radius:50%;background:var(--navy-100);
+  display:flex;align-items:center;justify-content:center;color:var(--navy-800);
+}
+.sup-contact svg{width:16px;height:16px;}
+
+/* report */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px;}
+.stat-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-m);padding:14px;box-shadow:var(--shadow-1);}
+.stat-num{font-size:26px;font-weight:800;color:var(--navy-800);line-height:1;}
+.stat-label{font-size:12px;color:var(--ink-muted);margin-top:6px;font-weight:600;}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;}
+.bar-label{width:106px;flex-shrink:0;font-size:12.5px;color:var(--ink-muted);font-weight:600;}
+.bar-track{flex:1;height:9px;background:var(--navy-100);border-radius:6px;overflow:hidden;}
+.bar-fill{height:100%;background:var(--navy-700);border-radius:6px;}
+.bar-val{width:34px;text-align:right;font-size:12.5px;font-weight:700;flex-shrink:0;}
+
+.settings-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:13px 14px;border-bottom:1px solid var(--line);
+}
+.settings-row:last-child{border-bottom:none;}
+.settings-row span{font-size:14.5px;font-weight:600;}
+.settings-row small{display:block;font-size:12px;color:var(--ink-muted);font-weight:400;margin-top:2px;}
+
+/* ============ BUTTONS ============ */
+.btn{
+  border:none;border-radius:var(--radius-m);padding:11px 16px;
+  font-weight:700;font-size:14.5px;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+}
+.btn-primary{background:var(--navy-800);color:#fff;}
+.btn-primary:active{background:var(--navy-900);}
+.btn-amber{background:var(--amber);color:var(--navy-900);}
+.btn-ghost{background:var(--navy-100);color:var(--navy-800);}
+.btn-danger{background:var(--red-bg);color:var(--red-ink);}
+.btn-outline{background:none;border:1px solid var(--line);color:var(--ink);}
+.btn-block{width:100%;}
+.btn-sm{padding:8px 12px;font-size:13px;border-radius:var(--radius-s);}
+.btn[disabled]{opacity:.45;}
+
+/* ============ MODALS / SHEETS ============ */
+.overlay{
+  position:fixed;inset:0;background:rgba(19,42,55,.45);
+  z-index:50;display:none;
+}
+.overlay.active{display:block;}
+.sheet{
+  position:fixed;left:0;right:0;bottom:0;z-index:51;
+  max-width:1100px;margin:0 auto;
+  background:var(--surface);
+  border-radius:18px 18px 0 0;
+  max-height:92vh;max-height:92dvh;
+  display:flex;flex-direction:column;
+  transform:translateY(100%);
+  transition:transform .22s ease;
+  padding-bottom:var(--safe-bottom);
+}
+.sheet.active{transform:translateY(0);}
+.sheet-handle{width:38px;height:4px;background:var(--line);border-radius:3px;margin:10px auto 2px;}
+.sheet-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 16px 12px;border-bottom:1px solid var(--line);flex-shrink:0;
+}
+.sheet-head h3{font-size:16.5px;}
+.sheet-body{padding:14px 16px 20px;overflow-y:auto;}
+.sheet-foot{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:10px;flex-shrink:0;}
+
+/* full modal (detail view) */
+.modal-full{
+  position:fixed;inset:0;z-index:52;background:var(--paper);
+  display:none;flex-direction:column;
+  max-width:1100px;margin:0 auto;
+}
+.modal-full.active{display:flex;}
+.modal-full-head{
+  background:var(--navy-800);color:#fff;flex-shrink:0;
+  padding:calc(12px + var(--safe-top)) 10px 12px 6px;
+  display:flex;align-items:center;gap:6px;
+}
+.modal-full-head h3{font-size:16px;color:#fff;flex:1;}
+.modal-full-body{flex:1;overflow-y:auto;padding:14px 14px calc(24px + var(--safe-bottom));}
+
+/* forms */
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12.5px;font-weight:700;color:var(--ink-muted);margin-bottom:6px;}
+.field input[type=text],
+.field input[type=number],
+.field input[type=date],
+.field input[type=tel],
+.field input[type=email],
+.field select,
+.field textarea{
+  width:100%;border:1px solid var(--line);border-radius:var(--radius-s);
+  padding:11px 12px;background:var(--surface);color:var(--ink);outline:none;
+}
+.field textarea{resize:vertical;min-height:70px;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--navy-700);}
+.field-row{display:flex;gap:10px;}
+.field-row .field{flex:1;}
+.seg{display:flex;border:1px solid var(--line);border-radius:var(--radius-s);overflow:hidden;}
+.seg button{flex:1;background:var(--surface);border:none;padding:10px 4px;font-size:12.5px;font-weight:700;color:var(--ink-muted);border-right:1px solid var(--line);}
+.seg button:last-child{border-right:none;}
+.seg button.active{background:var(--navy-800);color:#fff;}
+
+/* checklist */
+.checklist-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);}
+.checklist-item:last-child{border-bottom:none;}
+.checklist-item input[type=checkbox]{width:20px;height:20px;flex-shrink:0;accent-color:var(--navy-800);}
+.checklist-item span{flex:1;font-size:14px;}
+.checklist-item.done span{text-decoration:line-through;color:var(--ink-faint);}
+.checklist-item button{background:none;border:none;color:var(--ink-faint);width:26px;height:26px;flex-shrink:0;}
+.add-check-row{display:flex;gap:8px;margin-top:8px;}
+.add-check-row input{flex:1;border:1px solid var(--line);border-radius:var(--radius-s);padding:9px 11px;outline:none;}
+
+/* photos */
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;}
+.photo-thumb{position:relative;aspect-ratio:1;border-radius:var(--radius-s);overflow:hidden;background:var(--navy-100);}
+.photo-thumb img{width:100%;height:100%;object-fit:cover;}
+.photo-thumb button{
+  position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;
+  background:rgba(19,42,55,.75);color:#fff;border:none;display:flex;align-items:center;justify-content:center;
+}
+.photo-add{
+  aspect-ratio:1;border-radius:var(--radius-s);border:1.5px dashed var(--line);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  color:var(--ink-faint);gap:4px;background:none;
+}
+.photo-add svg{width:20px;height:20px;}
+.photo-add span{font-size:10.5px;font-weight:700;}
+
+/* detail rows */
+.detail-block{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-m);padding:14px;margin-bottom:12px;}
+.detail-row{display:flex;justify-content:space-between;gap:10px;padding:6px 0;font-size:14px;}
+.detail-row .l{color:var(--ink-muted);}
+.detail-row .r{font-weight:700;text-align:right;}
+.detail-desc{font-size:14px;line-height:1.5;color:var(--ink);white-space:pre-wrap;}
+
+/* toast */
+#toast{
+  position:fixed;left:50%;bottom:calc(100px + var(--safe-bottom));transform:translateX(-50%) translateY(8px);
+  background:var(--navy-900);color:#fff;padding:11px 18px;border-radius:24px;
+  font-size:13.5px;font-weight:600;z-index:80;opacity:0;pointer-events:none;
+  transition:opacity .18s ease, transform .18s ease;box-shadow:var(--shadow-2);
+  max-width:88%;text-align:center;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* confirm dialog */
+.confirm-box{
+  position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);
+  z-index:90;background:var(--surface);border-radius:var(--radius-l);
+  padding:20px;width:min(320px,86vw);box-shadow:var(--shadow-2);display:none;
+}
+.confirm-box.active{display:block;}
+.confirm-box h4{font-size:16px;margin-bottom:6px;}
+.confirm-box p{font-size:13.5px;color:var(--ink-muted);line-height:1.5;margin-bottom:16px;}
+.confirm-box .row{display:flex;gap:10px;}
+.confirm-box .row .btn{flex:1;}
+
+/* select-as-list (immobile/asset/fornitore pickers) */
+.pick-list{display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto;}
+.pick-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:11px 13px;border:1px solid var(--line);border-radius:var(--radius-s);
+}
+.pick-item.selected{border-color:var(--navy-800);background:var(--navy-100);}
+.pick-item b{font-size:14px;}
+.pick-item small{display:block;color:var(--ink-muted);font-size:12px;margin-top:2px;}
+
+/* helper */
+.hint{font-size:12px;color:var(--ink-faint);margin-top:5px;}
+.install-banner{
+  background:var(--amber-bg);border:1px solid #E9CFA0;color:var(--amber-ink);
+  border-radius:var(--radius-m);padding:12px 14px;margin-bottom:14px;
+  display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;
+}
+.install-banner button{margin-left:auto;flex-shrink:0;}
+
+/* ============ RESPONSIVE (tablet/desktop) ============ */
+@media (min-width:680px){
+  main{padding:20px 24px calc(30px);}
+  .tabbar{display:none;}
+  #app{padding-left:84px;}
+  .sidenav{
+    display:flex;flex-direction:column;gap:4px;
+    position:fixed;left:0;top:0;bottom:0;width:84px;
+    background:var(--navy-800);padding:calc(14px + var(--safe-top)) 6px 14px;
+    z-index:30;align-items:center;
+  }
+  .sidenav .tab-btn{color:#9FB4BF;padding:11px 2px;border-radius:12px;}
+  .sidenav .tab-btn.active{background:rgba(255,255,255,.1);color:#fff;}
+  .sidenav .tab-btn.active svg{color:var(--amber);}
+  .fab{right:calc(24px + (100vw - min(100vw,1100px))/2);bottom:26px;}
+  .stat-grid{grid-template-columns:repeat(4,1fr);}
+  .sheet{left:auto;right:24px;bottom:24px;top:24px;border-radius:18px;width:440px;max-height:none;box-shadow:var(--shadow-2);}
+  .sheet-body{padding:16px 20px 20px;}
+  .modal-full{left:auto;right:0;width:520px;box-shadow:-8px 0 30px rgba(19,42,55,.2);}
+  .ilist-item{cursor:pointer;}
+  .field-row.desktop-3 .field{flex:1;}
+}
+@media (min-width:680px) and (max-width:1099px){
+  #app{max-width:none;}
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- SIDE NAV (desktop) -->
+  <nav class="sidenav" id="sidenav"></nav>
+
+  <header class="topbar">
+    <div>
+      <h1 id="topbarTitle">Scadenze</h1>
+      <div class="subtitle" id="topbarSubtitle">Interventi di manutenzione</div>
+    </div>
+    <div class="topbar-actions">
+      <button class="icon-btn" id="btnSearchToggle" title="Cerca" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ===== VIEW: SCADENZE ===== -->
+    <section class="view active" id="view-scadenze">
+      <div class="chiprow" id="scadFilters">
+        <button class="chip active" data-f="tutte">Tutte</button>
+        <button class="chip" data-f="scadute">Scadute</button>
+        <button class="chip" data-f="settimana">Questa settimana</button>
+        <button class="chip" data-f="mese">Questo mese</button>
+      </div>
+      <div id="installBannerHost"></div>
+      <div id="scadList"></div>
+    </section>
+
+    <!-- ===== VIEW: INTERVENTI ===== -->
+    <section class="view" id="view-interventi">
+      <div class="searchbar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="searchInterventi" placeholder="Cerca interventi...">
+      </div>
+      <div class="chiprow" id="intFilters">
+        <button class="chip active" data-f="tutti">Tutti</button>
+        <button class="chip" data-f="da_fare">Da fare</button>
+        <button class="chip" data-f="in_corso">In corso</button>
+        <button class="chip" data-f="completato">Completati</button>
+        <button class="chip" data-f="annullato">Annullati</button>
+      </div>
+      <div id="intList"></div>
+    </section>
+
+    <!-- ===== VIEW: IMMOBILI ===== -->
+    <section class="view" id="view-immobili">
+      <div id="propList"></div>
+    </section>
+
+    <!-- ===== VIEW: FORNITORI ===== -->
+    <section class="view" id="view-fornitori">
+      <div id="supList"></div>
+    </section>
+
+    <!-- ===== VIEW: REPORT ===== -->
+    <section class="view" id="view-report">
+      <div class="section-title">Panoramica</div>
+      <div class="stat-grid" id="statGrid"></div>
+
+      <div class="section-title">Interventi per stato</div>
+      <div class="card" style="padding:14px 14px 6px" id="barsStato"></div>
+
+      <div class="section-title">Interventi per categoria impianto</div>
+      <div class="card" style="padding:14px 14px 6px" id="barsCategoria"></div>
+
+      <div class="section-title">Costo totale per immobile</div>
+      <div class="card" style="padding:14px 14px 6px" id="barsCosto"></div>
+
+      <div class="section-title">Impostazioni</div>
+      <div class="card">
+        <div class="settings-row">
+          <span>Esporta dati<small>Salva un backup in formato JSON</small></span>
+          <button class="btn btn-ghost btn-sm" id="btnExport">Esporta</button>
+        </div>
+        <div class="settings-row">
+          <span>Importa dati<small>Ripristina da un file JSON</small></span>
+          <button class="btn btn-ghost btn-sm" id="btnImport">Importa</button>
+        </div>
+        <div class="settings-row">
+          <span>Dati di esempio<small>Carica un set dimostrativo</small></span>
+          <button class="btn btn-ghost btn-sm" id="btnDemo">Carica</button>
+        </div>
+        <div class="settings-row">
+          <span>Cancella tutti i dati<small>Operazione irreversibile</small></span>
+          <button class="btn btn-danger btn-sm" id="btnWipe">Cancella</button>
+        </div>
+      </div>
+      <input type="file" id="fileImport" accept="application/json" style="display:none">
+    </section>
+  </main>
+
+  <!-- BOTTOM TAB NAV (mobile) -->
+  <nav class="tabbar" id="tabbar"></nav>
+
+  <!-- FAB -->
+  <button class="fab" id="fab" title="Nuovo intervento">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </button>
+
+</div>
+
+<!-- ============ SHEETS (forms) ============ -->
+
+<div class="overlay" id="overlay"></div>
+
+<!-- Intervento form -->
+<div class="sheet" id="sheetIntervento">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head"><h3 id="intFormTitle">Nuovo intervento</h3><button class="icon-btn" data-close style="background:var(--navy-100);color:var(--navy-800)">✕</button></div>
+  <div class="sheet-body">
+    <div class="field"><label>Titolo</label><input type="text" id="fTitolo" placeholder="Es. Sostituzione guarnizione rubinetto"></div>
+    <div class="field"><label>Immobile</label>
+      <select id="fProperty"><option value="">Seleziona immobile...</option></select>
+    </div>
+    <div class="field"><label>Impianto / apparecchiatura (opzionale)</label>
+      <select id="fAsset"><option value="">— Nessuno —</option></select>
+    </div>
+    <div class="field"><label>Tipo intervento</label>
+      <select id="fTipo">
+        <option value="preventiva">Manutenzione preventiva</option>
+        <option value="correttiva">Manutenzione correttiva</option>
+        <option value="straordinaria">Manutenzione straordinaria</option>
+        <option value="ispezione">Ispezione / verifica</option>
+      </select>
+    </div>
+    <div class="field"><label>Priorità</label>
+      <div class="seg" id="fPriorita">
+        <button data-v="bassa">Bassa</button>
+        <button data-v="media" class="active">Media</button>
+        <button data-v="alta">Alta</button>
+        <button data-v="urgente">Urgente</button>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Scadenza</label><input type="date" id="fScadenza"></div>
+      <div class="field"><label>Costo previsto (€)</label><input type="number" id="fCosto" placeholder="0" min="0" step="0.01"></div>
+    </div>
+    <div class="field"><label>Fornitore / tecnico (opzionale)</label>
+      <select id="fFornitore"><option value="">— Nessuno —</option></select>
+    </div>
+    <div class="field"><label>Descrizione</label><textarea id="fDescrizione" placeholder="Dettagli sull'intervento..."></textarea></div>
+  </div>
+  <div class="sheet-foot">
+    <button class="btn btn-outline" data-close style="flex:1">Annulla</button>
+    <button class="btn btn-primary" id="btnSaveIntervento" style="flex:2">Salva intervento</button>
+  </div>
+</div>
+
+<!-- Immobile form -->
+<div class="sheet" id="sheetProperty">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head"><h3 id="propFormTitle">Nuovo immobile</h3><button class="icon-btn" data-close style="background:var(--navy-100);color:var(--navy-800)">✕</button></div>
+  <div class="sheet-body">
+    <div class="field"><label>Nome immobile</label><input type="text" id="pNome" placeholder="Es. Palazzina Via Roma 12"></div>
+    <div class="field"><label>Indirizzo</label><input type="text" id="pIndirizzo" placeholder="Via, città"></div>
+    <div class="field"><label>Tipologia</label>
+      <select id="pTipo">
+        <option value="residenziale">Residenziale</option>
+        <option value="uffici">Uffici</option>
+        <option value="commerciale">Commerciale</option>
+        <option value="industriale">Industriale / capannone</option>
+        <option value="pubblico">Edificio pubblico</option>
+        <option value="altro">Altro</option>
+      </select>
+    </div>
+    <div class="field"><label>Note</label><textarea id="pNote" placeholder="Note aggiuntive..."></textarea></div>
+  </div>
+  <div class="sheet-foot">
+    <button class="btn btn-outline" data-close style="flex:1">Annulla</button>
+    <button class="btn btn-primary" id="btnSaveProperty" style="flex:2">Salva immobile</button>
+  </div>
+</div>
+
+<!-- Asset form -->
+<div class="sheet" id="sheetAsset">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head"><h3 id="assetFormTitle">Nuovo impianto</h3><button class="icon-btn" data-close style="background:var(--navy-100);color:var(--navy-800)">✕</button></div>
+  <div class="sheet-body">
+    <div class="field"><label>Nome / descrizione</label><input type="text" id="aNome" placeholder="Es. Caldaia condominiale"></div>
+    <div class="field"><label>Categoria</label>
+      <select id="aCategoria">
+        <option value="elettrico">Elettrico</option>
+        <option value="idraulico">Idraulico</option>
+        <option value="hvac">Climatizzazione / HVAC</option>
+        <option value="ascensore">Ascensore</option>
+        <option value="antincendio">Antincendio</option>
+        <option value="infissi">Infissi / serramenti</option>
+        <option value="coperture">Coperture / tetto</option>
+        <option value="strutture">Strutture</option>
+        <option value="verde">Verde / giardino</option>
+        <option value="altro">Altro</option>
+      </select>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Marca / modello</label><input type="text" id="aMarca" placeholder="Opzionale"></div>
+      <div class="field"><label>Data installazione</label><input type="date" id="aData"></div>
+    </div>
+    <div class="field"><label>Note</label><textarea id="aNote"></textarea></div>
+  </div>
+  <div class="sheet-foot">
+    <button class="btn btn-outline" data-close style="flex:1">Annulla</button>
+    <button class="btn btn-primary" id="btnSaveAsset" style="flex:2">Salva impianto</button>
+  </div>
+</div>
+
+<!-- Fornitore form -->
+<div class="sheet" id="sheetSupplier">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head"><h3 id="supFormTitle">Nuovo fornitore</h3><button class="icon-btn" data-close style="background:var(--navy-100);color:var(--navy-800)">✕</button></div>
+  <div class="sheet-body">
+    <div class="field"><label>Nome / ragione sociale</label><input type="text" id="sNome" placeholder="Es. Idraulica Rossi"></div>
+    <div class="field"><label>Specializzazione</label><input type="text" id="sSpec" placeholder="Es. Idraulico, elettricista..."></div>
+    <div class="field-row">
+      <div class="field"><label>Telefono</label><input type="tel" id="sTel" placeholder="Opzionale"></div>
+      <div class="field"><label>Email</label><input type="email" id="sEmail" placeholder="Opzionale"></div>
+    </div>
+    <div class="field"><label>Note</label><textarea id="sNote"></textarea></div>
+  </div>
+  <div class="sheet-foot">
+    <button class="btn btn-outline" data-close style="flex:1">Annulla</button>
+    <button class="btn btn-primary" id="btnSaveSupplier" style="flex:2">Salva fornitore</button>
+  </div>
+</div>
+
+<!-- ============ FULL MODAL: DETTAGLIO INTERVENTO ============ -->
+<div class="modal-full" id="modalIntDetail">
+  <div class="modal-full-head">
+    <button class="icon-btn" data-close><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <h3>Dettaglio intervento</h3>
+    <button class="icon-btn" id="btnEditInt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+    <button class="icon-btn" id="btnDelInt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+  </div>
+  <div class="modal-full-body" id="intDetailBody"></div>
+</div>
+
+<!-- ============ FULL MODAL: DETTAGLIO IMMOBILE ============ -->
+<div class="modal-full" id="modalPropDetail">
+  <div class="modal-full-head">
+    <button class="icon-btn" data-close><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <h3>Dettaglio immobile</h3>
+    <button class="icon-btn" id="btnEditProp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+    <button class="icon-btn" id="btnDelProp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+  </div>
+  <div class="modal-full-body" id="propDetailBody"></div>
+</div>
+
+<div id="toast"></div>
+
+<div class="overlay" id="confirmOverlay"></div>
+<div class="confirm-box" id="confirmBox">
+  <h4 id="confirmTitle">Confermi?</h4>
+  <p id="confirmText"></p>
+  <div class="row">
+    <button class="btn btn-outline" id="confirmCancel">Annulla</button>
+    <button class="btn btn-danger" id="confirmOk">Conferma</button>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ==================================================================
+   DB LAYER — vanilla IndexedDB, promise-based helper
+   ================================================================== */
+const DB_NAME = "ManuTrackDB";
+const DB_VERSION = 1;
+let dbInstance = null;
+
+function openDB(){
+  return new Promise((resolve, reject)=>{
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e)=>{
+      const db = e.target.result;
+      if(!db.objectStoreNames.contains("properties")){
+        const s = db.createObjectStore("properties", {keyPath:"id", autoIncrement:true});
+        s.createIndex("nome","nome",{unique:false});
+      }
+      if(!db.objectStoreNames.contains("assets")){
+        const s = db.createObjectStore("assets", {keyPath:"id", autoIncrement:true});
+        s.createIndex("propertyId","propertyId",{unique:false});
+      }
+      if(!db.objectStoreNames.contains("interventions")){
+        const s = db.createObjectStore("interventions", {keyPath:"id", autoIncrement:true});
+        s.createIndex("propertyId","propertyId",{unique:false});
+        s.createIndex("assetId","assetId",{unique:false});
+        s.createIndex("stato","stato",{unique:false});
+        s.createIndex("dataScadenza","dataScadenza",{unique:false});
+      }
+      if(!db.objectStoreNames.contains("suppliers")){
+        const s = db.createObjectStore("suppliers", {keyPath:"id", autoIncrement:true});
+        s.createIndex("nome","nome",{unique:false});
+      }
+    };
+    req.onsuccess = ()=>{ dbInstance = req.result; resolve(dbInstance); };
+    req.onerror = ()=> reject(req.error);
+  });
+}
+
+function tx(storeName, mode){
+  return dbInstance.transaction(storeName, mode).objectStore(storeName);
+}
+function reqToPromise(req){
+  return new Promise((res,rej)=>{ req.onsuccess=()=>res(req.result); req.onerror=()=>rej(req.error); });
+}
+
+const DB = {
+  add(store, obj){ obj.createdAt = obj.createdAt || Date.now(); return reqToPromise(tx(store,"readwrite").add(obj)); },
+  put(store, obj){ obj.updatedAt = Date.now(); return reqToPromise(tx(store,"readwrite").put(obj)); },
+  get(store, id){ return reqToPromise(tx(store,"readonly").get(id)); },
+  del(store, id){ return reqToPromise(tx(store,"readwrite").delete(id)); },
+  all(store){ return reqToPromise(tx(store,"readonly").getAll()); },
+  clear(store){ return reqToPromise(tx(store,"readwrite").clear()); }
+};
+
+/* ==================================================================
+   STATE
+   ================================================================== */
+let STATE = {
+  properties: [],
+  assets: [],
+  interventions: [],
+  suppliers: [],
+  tab: "scadenze",
+  scadFilter: "tutte",
+  intFilter: "tutti",
+  intSearch: "",
+  editingIntId: null,
+  editingPropId: null,
+  editingAssetId: null,
+  editingSupId: null,
+  currentDetailIntId: null,
+  currentDetailPropId: null,
+  pendingPhotos: [],
+  priorita: "media"
+};
+
+async function reloadAll(){
+  const [p,a,i,s] = await Promise.all([DB.all("properties"),DB.all("assets"),DB.all("interventions"),DB.all("suppliers")]);
+  STATE.properties = p; STATE.assets = a; STATE.interventions = i; STATE.suppliers = s;
+}
+
+/* ==================================================================
+   UTIL
+   ================================================================== */
+function $(sel){ return document.querySelector(sel); }
+function $all(sel){ return Array.from(document.querySelectorAll(sel)); }
+function el(tag, cls){ const e=document.createElement(tag); if(cls) e.className=cls; return e; }
+function esc(s){ return (s==null?"":String(s)).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function fmtDate(d){
+  if(!d) return "—";
+  const dt = new Date(d+"T00:00:00");
+  if(isNaN(dt)) return "—";
+  return dt.toLocaleDateString("it-IT",{day:"2-digit",month:"short",year:"numeric"});
+}
+function fmtMoney(n){
+  n = Number(n)||0;
+  return n.toLocaleString("it-IT",{style:"currency",currency:"EUR",maximumFractionDigits:2});
+}
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function daysDiff(dateStr){
+  if(!dateStr) return null;
+  const a = new Date(todayISO()+"T00:00:00");
+  const b = new Date(dateStr+"T00:00:00");
+  return Math.round((b-a)/86400000);
+}
+let toastTimer=null;
+function toast(msg){
+  const t = $("#toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove("show"), 2200);
+}
+function confirmDialog(title, text){
+  return new Promise((resolve)=>{
+    $("#confirmTitle").textContent = title;
+    $("#confirmText").textContent = text;
+    $("#confirmOverlay").classList.add("active");
+    $("#confirmBox").classList.add("active");
+    function cleanup(v){
+      $("#confirmOverlay").classList.remove("active");
+      $("#confirmBox").classList.remove("active");
+      $("#confirmOk").removeEventListener("click", onOk);
+      $("#confirmCancel").removeEventListener("click", onCancel);
+      $("#confirmOverlay").removeEventListener("click", onCancel);
+      resolve(v);
+    }
+    function onOk(){ cleanup(true); }
+    function onCancel(){ cleanup(false); }
+    $("#confirmOk").addEventListener("click", onOk);
+    $("#confirmCancel").addEventListener("click", onCancel);
+    $("#confirmOverlay").addEventListener("click", onCancel);
+  });
+}
+
+const TIPO_LABEL = {preventiva:"Preventiva", correttiva:"Correttiva", straordinaria:"Straordinaria", ispezione:"Ispezione"};
+const STATO_LABEL = {da_fare:"Da fare", in_corso:"In corso", completato:"Completato", annullato:"Annullato"};
+const PRIORITA_LABEL = {bassa:"Bassa", media:"Media", alta:"Alta", urgente:"Urgente"};
+const CATEGORIA_LABEL = {elettrico:"Elettrico", idraulico:"Idraulico", hvac:"HVAC / Climatizzazione", ascensore:"Ascensore", antincendio:"Antincendio", infissi:"Infissi/Serramenti", coperture:"Coperture/Tetto", strutture:"Strutture", verde:"Verde/Giardino", altro:"Altro"};
+const TIPOLOGIA_LABEL = {residenziale:"Residenziale", uffici:"Uffici", commerciale:"Commerciale", industriale:"Industriale", pubblico:"Edificio pubblico", altro:"Altro"};
+
+function propName(id){ const p = STATE.properties.find(x=>x.id===id); return p?p.nome:"—"; }
+function assetName(id){ if(!id) return null; const a = STATE.assets.find(x=>x.id===id); return a?a.nome:null; }
+function supplierName(id){ if(!id) return null; const s = STATE.suppliers.find(x=>x.id===id); return s?s.nome:null; }
+
+/* ==================================================================
+   NAV / TABS
+   ================================================================== */
+const TABS = [
+  {id:"scadenze", label:"Scadenze", title:"Scadenze", sub:"Interventi in programma", icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'},
+  {id:"interventi", label:"Interventi", title:"Interventi", sub:"Tutti gli interventi", icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a4 4 0 0 1 5.4 5.4L9.5 22.3 2 24l1.7-7.5L14.7 6.3z"/><path d="M13 8l3 3"/></svg>'},
+  {id:"immobili", label:"Immobili", title:"Immobili", sub:"Proprietà gestite", icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><line x1="9" y1="9" x2="9" y2="9.01"/><line x1="9" y1="13" x2="9" y2="13.01"/><line x1="9" y1="17" x2="9" y2="17.01"/></svg>'},
+  {id:"fornitori", label:"Fornitori", title:"Fornitori", sub:"Tecnici e ditte", icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'},
+  {id:"report", label:"Report", title:"Report", sub:"Statistiche e impostazioni", icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>'}
+];
+
+function buildNav(){
+  const tabbar = $("#tabbar");
+  const sidenav = $("#sidenav");
+  tabbar.innerHTML=""; sidenav.innerHTML="";
+  TABS.forEach(t=>{
+    const b1 = el("button","tab-btn"+(t.id===STATE.tab?" active":""));
+    b1.dataset.tab = t.id;
+    b1.innerHTML = t.icon+"<span>"+t.label+"</span>";
+    b1.addEventListener("click", ()=>switchTab(t.id));
+    tabbar.appendChild(b1);
+    const b2 = b1.cloneNode(true);
+    b2.addEventListener("click", ()=>switchTab(t.id));
+    sidenav.appendChild(b2);
+  });
+}
+function switchTab(id){
+  STATE.tab = id;
+  $all(".view").forEach(v=>v.classList.remove("active"));
+  $("#view-"+id).classList.add("active");
+  $all(".tab-btn").forEach(b=>b.classList.toggle("active", b.dataset.tab===id));
+  const t = TABS.find(x=>x.id===id);
+  $("#topbarTitle").textContent = t.title;
+  $("#topbarSubtitle").textContent = t.sub;
+  $("#fab").style.display = (id==="report") ? "none" : "flex";
+  renderCurrentTab();
+}
+function renderCurrentTab(){
+  if(STATE.tab==="scadenze") renderScadenze();
+  else if(STATE.tab==="interventi") renderInterventi();
+  else if(STATE.tab==="immobili") renderImmobili();
+  else if(STATE.tab==="fornitori") renderFornitori();
+  else if(STATE.tab==="report") renderReport();
+}
+
+/* ==================================================================
+   RENDER: SCADENZE
+   ================================================================== */
+function renderScadenze(){
+  const host = $("#scadList");
+  let list = STATE.interventions.filter(i=> i.stato!=="completato" && i.stato!=="annullato" && i.dataScadenza);
+  const f = STATE.scadFilter;
+  if(f==="scadute") list = list.filter(i=> daysDiff(i.dataScadenza) < 0);
+  else if(f==="settimana") list = list.filter(i=> daysDiff(i.dataScadenza) <= 7);
+  else if(f==="mese") list = list.filter(i=> daysDiff(i.dataScadenza) <= 31);
+  list.sort((a,b)=> a.dataScadenza.localeCompare(b.dataScadenza));
+
+  if(list.length===0){
+    host.innerHTML = "";
+    host.appendChild(emptyState("calendar","Nessuna scadenza","Non ci sono interventi in programma per questo filtro."));
+    return;
+  }
+  host.innerHTML="";
+  list.forEach(i=> host.appendChild(interventionCard(i, true)));
+}
+
+function emptyState(kind, title, text){
+  const wrap = el("div","empty-state");
+  wrap.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+  <h3>${esc(title)}</h3><p>${esc(text)}</p>`;
+  return wrap;
+}
+
+function interventionCard(i, showDue){
+  const card = el("div","card");
+  const overdue = i.dataScadenza && daysDiff(i.dataScadenza) < 0 && i.stato!=="completato" && i.stato!=="annullato";
+  const item = el("div","ilist-item p-"+i.priorita+(overdue?" is-overdue":""));
+  const asset = assetName(i.assetId);
+  let dueHtml = "";
+  if(showDue && i.dataScadenza){
+    const dd = daysDiff(i.dataScadenza);
+    let cls="due-ok", txt=fmtDate(i.dataScadenza);
+    if(dd<0){ cls="due-overdue"; txt = Math.abs(dd)+"g fa"; }
+    else if(dd===0){ cls="due-soon"; txt="Oggi"; }
+    else if(dd<=7){ cls="due-soon"; txt=dd+"g"; }
+    dueHtml = `<div class="ilist-due ${cls}">${txt}</div>`;
+  }
+  item.innerHTML = `
+    <div class="ilist-body">
+      <div class="ilist-top">
+        <div>
+          <div class="ilist-title">${esc(i.titolo)}</div>
+          <div class="ilist-meta">
+            <span>${esc(propName(i.propertyId))}</span>${asset?`<span>· ${esc(asset)}</span>`:""}
+          </div>
+        </div>
+        ${dueHtml}
+      </div>
+      <div class="ilist-meta" style="margin-top:8px">
+        <span class="tag tag-${i.priorita}">${PRIORITA_LABEL[i.priorita]}</span>
+        <span class="tag tag-${i.stato}">${STATO_LABEL[i.stato]}</span>
+        <span class="tag" style="background:var(--grey-bg);color:#5A5346">${TIPO_LABEL[i.tipo]}</span>
+      </div>
+    </div>`;
+  item.addEventListener("click", ()=> openIntDetail(i.id));
+  card.appendChild(item);
+  return card;
+}
+
+/* ==================================================================
+   RENDER: INTERVENTI
+   ================================================================== */
+function renderInterventi(){
+  const host = $("#intList");
+  let list = STATE.interventions.slice();
+  if(STATE.intFilter!=="tutti") list = list.filter(i=>i.stato===STATE.intFilter);
+  const q = STATE.intSearch.trim().toLowerCase();
+  if(q) list = list.filter(i=> (i.titolo||"").toLowerCase().includes(q) || (i.descrizione||"").toLowerCase().includes(q) || propName(i.propertyId).toLowerCase().includes(q));
+  list.sort((a,b)=> (b.createdAt||0)-(a.createdAt||0));
+
+  if(list.length===0){
+    host.innerHTML="";
+    host.appendChild(emptyState("wrench","Nessun intervento","Tocca + per creare il primo intervento di manutenzione."));
+    return;
+  }
+  host.innerHTML="";
+  list.forEach(i=> host.appendChild(interventionCard(i, true)));
+}
+
+/* ==================================================================
+   RENDER: IMMOBILI
+   ================================================================== */
+function renderImmobili(){
+  const host = $("#propList");
+  host.innerHTML="";
+  const addBtn = el("button","btn btn-outline btn-block");
+  addBtn.style.marginBottom="12px";
+  addBtn.innerHTML = "+ Nuovo immobile";
+  addBtn.addEventListener("click", ()=> openPropertySheet());
+  host.appendChild(addBtn);
+
+  if(STATE.properties.length===0){
+    host.appendChild(emptyState("building","Nessun immobile","Aggiungi il primo immobile da gestire."));
+    return;
+  }
+  STATE.properties.slice().sort((a,b)=>(a.nome||"").localeCompare(b.nome||"")).forEach(p=>{
+    const nAssets = STATE.assets.filter(a=>a.propertyId===p.id).length;
+    const openInt = STATE.interventions.filter(i=>i.propertyId===p.id && i.stato!=="completato" && i.stato!=="annullato").length;
+    const card = el("div","card prop-card");
+    card.innerHTML = `
+      <div class="prop-head">
+        <div>
+          <div class="prop-name">${esc(p.nome)}</div>
+          <div class="prop-addr">${esc(p.indirizzo||"Nessun indirizzo")}</div>
+        </div>
+        <span class="tag" style="background:var(--blue-bg);color:#274A63">${TIPOLOGIA_LABEL[p.tipo]||"—"}</span>
+      </div>
+      <div class="prop-stats">
+        <span><b>${nAssets}</b> impianti</span>
+        <span><b>${openInt}</b> interventi aperti</span>
+      </div>`;
+    card.addEventListener("click", ()=> openPropDetail(p.id));
+    host.appendChild(card);
+  });
+}
+
+function openPropDetail(id){
+  STATE.currentDetailPropId = id;
+  const p = STATE.properties.find(x=>x.id===id);
+  if(!p) return;
+  const body = $("#propDetailBody");
+  const assets = STATE.assets.filter(a=>a.propertyId===id);
+  const ints = STATE.interventions.filter(i=>i.propertyId===id).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  body.innerHTML = `
+    <div class="detail-block">
+      <h3 style="font-size:18px;margin-bottom:4px">${esc(p.nome)}</h3>
+      <p style="color:var(--ink-muted);font-size:13.5px;margin-bottom:10px">${esc(p.indirizzo||"Nessun indirizzo")}</p>
+      <div class="detail-row"><span class="l">Tipologia</span><span class="r">${TIPOLOGIA_LABEL[p.tipo]||"—"}</span></div>
+      ${p.note?`<div class="detail-row" style="display:block"><span class="l">Note</span><p class="detail-desc" style="margin-top:4px">${esc(p.note)}</p></div>`:""}
+    </div>
+    <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+      <span>Impianti (${assets.length})</span>
+      <button class="btn btn-ghost btn-sm" id="btnAddAssetInline">+ Aggiungi</button>
+    </div>
+    <div id="assetListInline"></div>
+    <div class="section-title">Interventi (${ints.length})</div>
+    <div id="intListInline"></div>
+  `;
+  const assetHost = $("#assetListInline");
+  if(assets.length===0){
+    assetHost.appendChild(emptyState("tool","Nessun impianto","Aggiungi impianti o apparecchiature da monitorare."));
+  } else {
+    assets.forEach(a=>{
+      const c = el("div","card");
+      c.style.padding="12px 14px";
+      c.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center">
+        <div><b style="font-size:14.5px">${esc(a.nome)}</b><div style="font-size:12.5px;color:var(--ink-muted);margin-top:2px">${CATEGORIA_LABEL[a.categoria]||""}${a.marca?" · "+esc(a.marca):""}</div></div>
+      </div>`;
+      c.addEventListener("click", ()=> openAssetSheet(a.id));
+      assetHost.appendChild(c);
+    });
+  }
+  const intHost = $("#intListInline");
+  if(ints.length===0){
+    intHost.appendChild(emptyState("wrench","Nessun intervento","Nessun intervento registrato per questo immobile."));
+  } else {
+    ints.forEach(i=> intHost.appendChild(interventionCard(i, true)));
+  }
+  $("#btnAddAssetInline").addEventListener("click", ()=> openAssetSheet(null, id));
+  $("#modalPropDetail").classList.add("active");
+}
+
+/* ==================================================================
+   RENDER: FORNITORI
+   ================================================================== */
+function renderFornitori(){
+  const host = $("#supList");
+  host.innerHTML="";
+  const addBtn = el("button","btn btn-outline btn-block");
+  addBtn.style.marginBottom="12px";
+  addBtn.innerHTML = "+ Nuovo fornitore";
+  addBtn.addEventListener("click", ()=> openSupplierSheet());
+  host.appendChild(addBtn);
+
+  if(STATE.suppliers.length===0){
+    host.appendChild(emptyState("users","Nessun fornitore","Aggiungi tecnici e ditte di fiducia."));
+    return;
+  }
+  STATE.suppliers.slice().sort((a,b)=>(a.nome||"").localeCompare(b.nome||"")).forEach(s=>{
+    const card = el("div","card sup-card");
+    let contactHtml = "";
+    if(s.telefono) contactHtml += `<a href="tel:${esc(s.telefono)}" onclick="event.stopPropagation()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></a>`;
+    if(s.email) contactHtml += `<a href="mailto:${esc(s.email)}" onclick="event.stopPropagation()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z" style="display:none"/><path d="M22 6c0-1.1-.9-2-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6z"/><polyline points="22,6 12,13 2,6"/></svg></a>`;
+    card.innerHTML = `<div><div class="sup-name">${esc(s.nome)}</div><div class="sup-spec">${esc(s.specializzazione||"—")}</div></div><div class="sup-contact">${contactHtml}</div>`;
+    card.addEventListener("click", (e)=>{ if(e.target.closest("a")) return; openSupplierSheet(s.id); });
+    host.appendChild(card);
+  });
+}
+
+/* ==================================================================
+   RENDER: REPORT
+   ================================================================== */
+function renderReport(){
+  const total = STATE.interventions.length;
+  const completati = STATE.interventions.filter(i=>i.stato==="completato").length;
+  const aperti = STATE.interventions.filter(i=>i.stato==="da_fare"||i.stato==="in_corso").length;
+  const scaduti = STATE.interventions.filter(i=> i.dataScadenza && daysDiff(i.dataScadenza)<0 && i.stato!=="completato" && i.stato!=="annullato").length;
+
+  $("#statGrid").innerHTML = `
+    <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">Interventi totali</div></div>
+    <div class="stat-card"><div class="stat-num">${aperti}</div><div class="stat-label">Aperti</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--red-ink)">${scaduti}</div><div class="stat-label">Scaduti</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--green-ink)">${completati}</div><div class="stat-label">Completati</div></div>
+  `;
+
+  const statoCounts = {};
+  Object.keys(STATO_LABEL).forEach(k=> statoCounts[k]=0);
+  STATE.interventions.forEach(i=> statoCounts[i.stato] = (statoCounts[i.stato]||0)+1);
+  $("#barsStato").innerHTML = barRows(statoCounts, STATO_LABEL, total);
+
+  const catCounts = {};
+  STATE.interventions.forEach(i=>{
+    const a = STATE.assets.find(x=>x.id===i.assetId);
+    const cat = a ? a.categoria : "altro";
+    catCounts[cat] = (catCounts[cat]||0)+1;
+  });
+  $("#barsCategoria").innerHTML = Object.keys(catCounts).length ? barRows(catCounts, CATEGORIA_LABEL, total) : `<p style="color:var(--ink-faint);font-size:13px;padding:8px 0">Nessun dato disponibile.</p>`;
+
+  const costByProp = {};
+  STATE.interventions.forEach(i=>{
+    if(!i.costo) return;
+    costByProp[i.propertyId] = (costByProp[i.propertyId]||0) + Number(i.costo);
+  });
+  const maxCost = Math.max(1, ...Object.values(costByProp));
+  let costHtml = "";
+  Object.keys(costByProp).sort((a,b)=>costByProp[b]-costByProp[a]).forEach(pid=>{
+    const val = costByProp[pid];
+    costHtml += `<div class="bar-row"><div class="bar-label">${esc(propName(Number(pid)))}</div><div class="bar-track"><div class="bar-fill" style="width:${(val/maxCost*100).toFixed(0)}%"></div></div><div class="bar-val">${fmtMoney(val).replace(",00","")}</div></div>`;
+  });
+  $("#barsCosto").innerHTML = costHtml || `<p style="color:var(--ink-faint);font-size:13px;padding:8px 0">Nessun costo registrato.</p>`;
+}
+
+function barRows(counts, labels, total){
+  const max = Math.max(1, ...Object.values(counts));
+  let html = "";
+  Object.keys(labels).forEach(k=>{
+    const v = counts[k]||0;
+    if(v===0 && !STATO_LABEL[k] && !CATEGORIA_LABEL[k]) return;
+    html += `<div class="bar-row"><div class="bar-label">${labels[k]}</div><div class="bar-track"><div class="bar-fill" style="width:${(v/max*100).toFixed(0)}%"></div></div><div class="bar-val">${v}</div></div>`;
+  });
+  return html || `<p style="color:var(--ink-faint);font-size:13px;padding:8px 0">Nessun dato disponibile.</p>`;
+}
+
+/* ==================================================================
+   INTERVENTO: sheet (add/edit) + detail
+   ================================================================== */
+function fillPropertySelect(sel, selected){
+  sel.innerHTML = '<option value="">Seleziona immobile...</option>' +
+    STATE.properties.slice().sort((a,b)=>(a.nome||"").localeCompare(b.nome||"")).map(p=>`<option value="${p.id}" ${p.id===selected?"selected":""}>${esc(p.nome)}</option>`).join("");
+}
+function fillAssetSelect(sel, propertyId, selected){
+  const opts = STATE.assets.filter(a=>a.propertyId===Number(propertyId));
+  sel.innerHTML = '<option value="">— Nessuno —</option>' +
+    opts.map(a=>`<option value="${a.id}" ${a.id===selected?"selected":""}>${esc(a.nome)}</option>`).join("");
+}
+function fillSupplierSelect(sel, selected){
+  sel.innerHTML = '<option value="">— Nessuno —</option>' +
+    STATE.suppliers.slice().sort((a,b)=>(a.nome||"").localeCompare(b.nome||"")).map(s=>`<option value="${s.id}" ${s.id===selected?"selected":""}>${esc(s.nome)}</option>`).join("");
+}
+
+function openIntSheet(id, presetPropertyId){
+  STATE.editingIntId = id || null;
+  const i = id ? STATE.interventions.find(x=>x.id===id) : null;
+  $("#intFormTitle").textContent = i ? "Modifica intervento" : "Nuovo intervento";
+  fillPropertySelect($("#fProperty"), i ? i.propertyId : (presetPropertyId||""));
+  fillAssetSelect($("#fAsset"), i ? i.propertyId : (presetPropertyId||0), i ? i.assetId : null);
+  fillSupplierSelect($("#fFornitore"), i ? i.fornitoreId : null);
+  $("#fTitolo").value = i ? i.titolo : "";
+  $("#fTipo").value = i ? i.tipo : "preventiva";
+  $("#fScadenza").value = i ? (i.dataScadenza||"") : "";
+  $("#fCosto").value = i ? (i.costo||"") : "";
+  $("#fDescrizione").value = i ? (i.descrizione||"") : "";
+  STATE.priorita = i ? i.priorita : "media";
+  $all("#fPriorita button").forEach(b=> b.classList.toggle("active", b.dataset.v===STATE.priorita));
+  openSheet("#sheetIntervento");
+}
+$("#fProperty").addEventListener("change", (e)=>{
+  fillAssetSelect($("#fAsset"), e.target.value, null);
+});
+$all("#fPriorita button").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    STATE.priorita = b.dataset.v;
+    $all("#fPriorita button").forEach(x=>x.classList.toggle("active", x===b));
+  });
+});
+$("#btnSaveIntervento").addEventListener("click", async ()=>{
+  const titolo = $("#fTitolo").value.trim();
+  const propertyId = Number($("#fProperty").value)||null;
+  if(!titolo){ toast("Inserisci un titolo"); return; }
+  if(!propertyId){ toast("Seleziona un immobile"); return; }
+  const data = {
+    titolo,
+    propertyId,
+    assetId: $("#fAsset").value ? Number($("#fAsset").value) : null,
+    tipo: $("#fTipo").value,
+    priorita: STATE.priorita,
+    dataScadenza: $("#fScadenza").value || null,
+    costo: $("#fCosto").value ? Number($("#fCosto").value) : null,
+    fornitoreId: $("#fFornitore").value ? Number($("#fFornitore").value) : null,
+    descrizione: $("#fDescrizione").value.trim()
+  };
+  if(STATE.editingIntId){
+    const existing = STATE.interventions.find(x=>x.id===STATE.editingIntId);
+    const merged = Object.assign({}, existing, data);
+    await DB.put("interventions", merged);
+    toast("Intervento aggiornato");
+  } else {
+    data.stato = "da_fare";
+    data.dataCompletamento = null;
+    data.checklist = [];
+    data.foto = [];
+    await DB.add("interventions", data);
+    toast("Intervento creato");
+  }
+  await reloadAll();
+  closeSheets();
+  renderCurrentTab();
+});
+
+function openIntDetail(id){
+  STATE.currentDetailIntId = id;
+  renderIntDetail();
+  $("#modalIntDetail").classList.add("active");
+}
+function renderIntDetail(){
+  const i = STATE.interventions.find(x=>x.id===STATE.currentDetailIntId);
+  if(!i) return;
+  const body = $("#intDetailBody");
+  const overdue = i.dataScadenza && daysDiff(i.dataScadenza) < 0 && i.stato!=="completato" && i.stato!=="annullato";
+  const checklist = i.checklist||[];
+  const doneCount = checklist.filter(c=>c.fatto).length;
+  body.innerHTML = `
+    <div class="detail-block">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px">
+        <h3 style="font-size:18px;line-height:1.3">${esc(i.titolo)}</h3>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+        <span class="tag tag-${i.priorita}">${PRIORITA_LABEL[i.priorita]}</span>
+        <span class="tag" style="background:var(--grey-bg);color:#5A5346">${TIPO_LABEL[i.tipo]}</span>
+        ${overdue?`<span class="tag tag-urgente">Scaduto</span>`:""}
+      </div>
+      <div class="detail-row"><span class="l">Stato</span><span class="r"></span></div>
+      <div class="seg" id="stateSeg" style="margin-bottom:10px">
+        <button data-v="da_fare">Da fare</button>
+        <button data-v="in_corso">In corso</button>
+        <button data-v="completato">Completato</button>
+        <button data-v="annullato">Annullato</button>
+      </div>
+      <div class="detail-row"><span class="l">Immobile</span><span class="r">${esc(propName(i.propertyId))}</span></div>
+      ${assetName(i.assetId)?`<div class="detail-row"><span class="l">Impianto</span><span class="r">${esc(assetName(i.assetId))}</span></div>`:""}
+      ${supplierName(i.fornitoreId)?`<div class="detail-row"><span class="l">Fornitore</span><span class="r">${esc(supplierName(i.fornitoreId))}</span></div>`:""}
+      <div class="detail-row"><span class="l">Scadenza</span><span class="r">${fmtDate(i.dataScadenza)}</span></div>
+      ${i.dataCompletamento?`<div class="detail-row"><span class="l">Completato il</span><span class="r">${fmtDate(i.dataCompletamento)}</span></div>`:""}
+      ${i.costo?`<div class="detail-row"><span class="l">Costo</span><span class="r">${fmtMoney(i.costo)}</span></div>`:""}
+    </div>
+
+    ${i.descrizione ? `<div class="detail-block"><div class="section-title" style="margin-top:0">Descrizione</div><p class="detail-desc">${esc(i.descrizione)}</p></div>` : ""}
+
+    <div class="detail-block">
+      <div class="section-title" style="margin-top:0">Checklist ${checklist.length?`(${doneCount}/${checklist.length})`:""}</div>
+      <div id="checklistHost"></div>
+      <div class="add-check-row">
+        <input type="text" id="newCheckItem" placeholder="Aggiungi voce...">
+        <button class="btn btn-ghost btn-sm" id="addCheckBtn">+</button>
+      </div>
+    </div>
+
+    <div class="detail-block">
+      <div class="section-title" style="margin-top:0">Foto</div>
+      <div class="photo-grid" id="photoGrid"></div>
+    </div>
+  `;
+
+  // stato segment
+  $all("#stateSeg button").forEach(b=>{
+    b.classList.toggle("active", b.dataset.v===i.stato);
+    b.addEventListener("click", async ()=>{
+      i.stato = b.dataset.v;
+      if(i.stato==="completato" && !i.dataCompletamento) i.dataCompletamento = todayISO();
+      if(i.stato!=="completato") i.dataCompletamento = i.dataCompletamento||null;
+      await DB.put("interventions", i);
+      await reloadAll();
+      STATE.currentDetailIntId = i.id;
+      renderIntDetail();
+      renderCurrentTab();
+    });
+  });
+
+  // checklist
+  const clHost = $("#checklistHost");
+  if(checklist.length===0){
+    clHost.innerHTML = `<p style="color:var(--ink-faint);font-size:13px;padding:4px 0">Nessuna voce di controllo.</p>`;
+  } else {
+    clHost.innerHTML="";
+    checklist.forEach((c, idx)=>{
+      const row = el("div","checklist-item"+(c.fatto?" done":""));
+      row.innerHTML = `<input type="checkbox" ${c.fatto?"checked":""}><span>${esc(c.testo)}</span><button title="Rimuovi">✕</button>`;
+      row.querySelector("input").addEventListener("change", async (e)=>{
+        checklist[idx].fatto = e.target.checked;
+        await DB.put("interventions", i);
+        await reloadAll();
+        STATE.currentDetailIntId = i.id;
+        renderIntDetail();
+      });
+      row.querySelector("button").addEventListener("click", async ()=>{
+        checklist.splice(idx,1);
+        await DB.put("interventions", i);
+        await reloadAll();
+        STATE.currentDetailIntId = i.id;
+        renderIntDetail();
+      });
+      clHost.appendChild(row);
+    });
+  }
+  $("#addCheckBtn").addEventListener("click", async ()=>{
+    const val = $("#newCheckItem").value.trim();
+    if(!val) return;
+    checklist.push({testo:val, fatto:false});
+    await DB.put("interventions", i);
+    await reloadAll();
+    STATE.currentDetailIntId = i.id;
+    renderIntDetail();
+  });
+  $("#newCheckItem").addEventListener("keydown", (e)=>{ if(e.key==="Enter") $("#addCheckBtn").click(); });
+
+  // photos
+  const photoGrid = $("#photoGrid");
+  const foto = i.foto||[];
+  photoGrid.innerHTML="";
+  foto.forEach((src, idx)=>{
+    const thumb = el("div","photo-thumb");
+    thumb.innerHTML = `<img src="${src}"><button data-idx="${idx}">✕</button>`;
+    thumb.querySelector("button").addEventListener("click", async ()=>{
+      foto.splice(idx,1);
+      await DB.put("interventions", i);
+      await reloadAll();
+      STATE.currentDetailIntId = i.id;
+      renderIntDetail();
+    });
+    photoGrid.appendChild(thumb);
+  });
+  const addBtn = el("button","photo-add");
+  addBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>AGGIUNGI</span>`;
+  const fileInput = document.createElement("input");
+  fileInput.type="file"; fileInput.accept="image/*"; fileInput.capture="environment"; fileInput.style.display="none"; fileInput.multiple=true;
+  fileInput.addEventListener("change", async ()=>{
+    const files = Array.from(fileInput.files||[]);
+    for(const file of files){
+      const dataUrl = await fileToCompressedDataURL(file);
+      foto.push(dataUrl);
+    }
+    await DB.put("interventions", i);
+    await reloadAll();
+    STATE.currentDetailIntId = i.id;
+    renderIntDetail();
+  });
+  addBtn.addEventListener("click", ()=> fileInput.click());
+  photoGrid.appendChild(addBtn);
+  photoGrid.appendChild(fileInput);
+}
+
+function fileToCompressedDataURL(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const maxDim = 1000;
+        let {width,height} = img;
+        if(width>maxDim || height>maxDim){
+          const ratio = Math.min(maxDim/width, maxDim/height);
+          width = Math.round(width*ratio); height = Math.round(height*ratio);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width=width; canvas.height=height;
+        canvas.getContext("2d").drawImage(img,0,0,width,height);
+        resolve(canvas.toDataURL("image/jpeg",0.78));
+      };
+      img.onerror = ()=> resolve(reader.result);
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+$("#btnEditInt").addEventListener("click", ()=>{
+  $("#modalIntDetail").classList.remove("active");
+  openIntSheet(STATE.currentDetailIntId);
+});
+$("#btnDelInt").addEventListener("click", async ()=>{
+  const ok = await confirmDialog("Eliminare intervento?", "L'intervento e tutti i suoi dati (checklist, foto) verranno eliminati definitivamente.");
+  if(!ok) return;
+  await DB.del("interventions", STATE.currentDetailIntId);
+  await reloadAll();
+  $("#modalIntDetail").classList.remove("active");
+  renderCurrentTab();
+  toast("Intervento eliminato");
+});
+
+/* ==================================================================
+   IMMOBILE: sheet + detail actions
+   ================================================================== */
+function openPropertySheet(id){
+  STATE.editingPropId = id || null;
+  const p = id ? STATE.properties.find(x=>x.id===id) : null;
+  $("#propFormTitle").textContent = p ? "Modifica immobile" : "Nuovo immobile";
+  $("#pNome").value = p ? p.nome : "";
+  $("#pIndirizzo").value = p ? (p.indirizzo||"") : "";
+  $("#pTipo").value = p ? p.tipo : "residenziale";
+  $("#pNote").value = p ? (p.note||"") : "";
+  openSheet("#sheetProperty");
+}
+$("#btnSaveProperty").addEventListener("click", async ()=>{
+  const nome = $("#pNome").value.trim();
+  if(!nome){ toast("Inserisci il nome dell'immobile"); return; }
+  const data = { nome, indirizzo: $("#pIndirizzo").value.trim(), tipo: $("#pTipo").value, note: $("#pNote").value.trim() };
+  if(STATE.editingPropId){
+    const existing = STATE.properties.find(x=>x.id===STATE.editingPropId);
+    await DB.put("properties", Object.assign({}, existing, data));
+    toast("Immobile aggiornato");
+  } else {
+    await DB.add("properties", data);
+    toast("Immobile creato");
+  }
+  await reloadAll();
+  closeSheets();
+  renderCurrentTab();
+  if(STATE.currentDetailPropId) renderProDetailIfOpen();
+});
+function renderProDetailIfOpen(){
+  if($("#modalPropDetail").classList.contains("active") && STATE.currentDetailPropId){
+    openPropDetail(STATE.currentDetailPropId);
+  }
+}
+$("#btnEditProp").addEventListener("click", ()=>{
+  $("#modalPropDetail").classList.remove("active");
+  openPropertySheet(STATE.currentDetailPropId);
+});
+$("#btnDelProp").addEventListener("click", async ()=>{
+  const ok = await confirmDialog("Eliminare immobile?", "Verranno eliminati anche gli impianti collegati. Gli interventi collegati resteranno ma senza immobile associato.");
+  if(!ok) return;
+  const pid = STATE.currentDetailPropId;
+  const assetsToDelete = STATE.assets.filter(a=>a.propertyId===pid);
+  for(const a of assetsToDelete) await DB.del("assets", a.id);
+  await DB.del("properties", pid);
+  await reloadAll();
+  $("#modalPropDetail").classList.remove("active");
+  renderCurrentTab();
+  toast("Immobile eliminato");
+});
+
+/* Asset sheet */
+function openAssetSheet(id, presetPropertyId){
+  STATE.editingAssetId = id || null;
+  STATE._assetPropertyId = presetPropertyId || (id ? STATE.assets.find(x=>x.id===id).propertyId : STATE.currentDetailPropId);
+  const a = id ? STATE.assets.find(x=>x.id===id) : null;
+  $("#assetFormTitle").textContent = a ? "Modifica impianto" : "Nuovo impianto";
+  $("#aNome").value = a ? a.nome : "";
+  $("#aCategoria").value = a ? a.categoria : "elettrico";
+  $("#aMarca").value = a ? (a.marca||"") : "";
+  $("#aData").value = a ? (a.dataInstallazione||"") : "";
+  $("#aNote").value = a ? (a.note||"") : "";
+  openSheet("#sheetAsset");
+}
+$("#btnSaveAsset").addEventListener("click", async ()=>{
+  const nome = $("#aNome").value.trim();
+  if(!nome){ toast("Inserisci il nome dell'impianto"); return; }
+  const data = { nome, categoria: $("#aCategoria").value, marca: $("#aMarca").value.trim(), dataInstallazione: $("#aData").value||null, note: $("#aNote").value.trim(), propertyId: STATE._assetPropertyId };
+  if(STATE.editingAssetId){
+    const existing = STATE.assets.find(x=>x.id===STATE.editingAssetId);
+    await DB.put("assets", Object.assign({}, existing, data));
+    toast("Impianto aggiornato");
+  } else {
+    await DB.add("assets", data);
+    toast("Impianto creato");
+  }
+  await reloadAll();
+  closeSheets();
+  renderProDetailIfOpen();
+  renderCurrentTab();
+});
+
+/* Supplier sheet */
+function openSupplierSheet(id){
+  STATE.editingSupId = id || null;
+  const s = id ? STATE.suppliers.find(x=>x.id===id) : null;
+  $("#supFormTitle").textContent = s ? "Modifica fornitore" : "Nuovo fornitore";
+  $("#sNome").value = s ? s.nome : "";
+  $("#sSpec").value = s ? (s.specializzazione||"") : "";
+  $("#sTel").value = s ? (s.telefono||"") : "";
+  $("#sEmail").value = s ? (s.email||"") : "";
+  $("#sNote").value = s ? (s.note||"") : "";
+  openSheet("#sheetSupplier");
+}
+$("#btnSaveSupplier").addEventListener("click", async ()=>{
+  const nome = $("#sNome").value.trim();
+  if(!nome){ toast("Inserisci il nome del fornitore"); return; }
+  const data = { nome, specializzazione: $("#sSpec").value.trim(), telefono: $("#sTel").value.trim(), email: $("#sEmail").value.trim(), note: $("#sNote").value.trim() };
+  if(STATE.editingSupId){
+    const existing = STATE.suppliers.find(x=>x.id===STATE.editingSupId);
+    await DB.put("suppliers", Object.assign({}, existing, data));
+    toast("Fornitore aggiornato");
+  } else {
+    await DB.add("suppliers", data);
+    toast("Fornitore creato");
+  }
+  await reloadAll();
+  closeSheets();
+  renderCurrentTab();
+});
+
+/* ==================================================================
+   SHEETS / MODALS generic open-close
+   ================================================================== */
+function openSheet(sel){
+  $("#overlay").classList.add("active");
+  $(sel).classList.add("active");
+}
+function closeSheets(){
+  $("#overlay").classList.remove("active");
+  $all(".sheet").forEach(s=>s.classList.remove("active"));
+}
+$("#overlay").addEventListener("click", closeSheets);
+$all("[data-close]").forEach(b=> b.addEventListener("click", ()=>{
+  closeSheets();
+  $all(".modal-full").forEach(m=>m.classList.remove("active"));
+}));
+
+/* ==================================================================
+   FAB / FILTERS / SEARCH
+   ================================================================== */
+$("#fab").addEventListener("click", ()=>{
+  if(STATE.properties.length===0){
+    toast("Crea prima un immobile");
+    switchTab("immobili");
+    return;
+  }
+  openIntSheet(null);
+});
+$("#scadFilters").addEventListener("click", (e)=>{
+  const b = e.target.closest(".chip"); if(!b) return;
+  $all("#scadFilters .chip").forEach(c=>c.classList.remove("active"));
+  b.classList.add("active");
+  STATE.scadFilter = b.dataset.f;
+  renderScadenze();
+});
+$("#intFilters").addEventListener("click", (e)=>{
+  const b = e.target.closest(".chip"); if(!b) return;
+  $all("#intFilters .chip").forEach(c=>c.classList.remove("active"));
+  b.classList.add("active");
+  STATE.intFilter = b.dataset.f;
+  renderInterventi();
+});
+$("#searchInterventi").addEventListener("input", (e)=>{
+  STATE.intSearch = e.target.value;
+  renderInterventi();
+});
+
+/* ==================================================================
+   EXPORT / IMPORT / DEMO / WIPE
+   ================================================================== */
+$("#btnExport").addEventListener("click", ()=>{
+  const payload = { exportedAt: new Date().toISOString(), properties: STATE.properties, assets: STATE.assets, interventions: STATE.interventions, suppliers: STATE.suppliers };
+  const blob = new Blob([JSON.stringify(payload,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "manutrack-backup-"+todayISO()+".json";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast("Backup esportato");
+});
+$("#btnImport").addEventListener("click", ()=> $("#fileImport").click());
+$("#fileImport").addEventListener("change", async ()=>{
+  const file = $("#fileImport").files[0];
+  if(!file) return;
+  try{
+    const text = await file.text();
+    const data = JSON.parse(text);
+    const ok = await confirmDialog("Importare dati?", "I dati importati verranno aggiunti a quelli esistenti.");
+    if(!ok) return;
+    for(const p of (data.properties||[])){ const {id, ...rest} = p; await DB.add("properties", rest); }
+    for(const a of (data.assets||[])){ const {id, ...rest} = a; await DB.add("assets", rest); }
+    for(const s of (data.suppliers||[])){ const {id, ...rest} = s; await DB.add("suppliers", rest); }
+    for(const i of (data.interventions||[])){ const {id, ...rest} = i; await DB.add("interventions", rest); }
+    await reloadAll();
+    renderCurrentTab();
+    toast("Dati importati");
+  }catch(err){
+    toast("File non valido");
+  }
+  $("#fileImport").value="";
+});
+$("#btnDemo").addEventListener("click", async ()=>{
+  const ok = await confirmDialog("Caricare dati di esempio?", "Verranno aggiunti alcuni immobili, impianti e interventi dimostrativi.");
+  if(!ok) return;
+  const p1 = await DB.add("properties", {nome:"Condominio Via Roma 12", indirizzo:"Via Roma 12, Faenza", tipo:"residenziale", note:"6 unità abitative"});
+  const p2 = await DB.add("properties", {nome:"Uffici Centro Direzionale", indirizzo:"Viale Europa 5, Faenza", tipo:"uffici", note:""});
+  const sup1 = await DB.add("suppliers", {nome:"Idraulica Bianchi", specializzazione:"Idraulico", telefono:"333 1234567", email:"info@idraulicabianchi.it", note:""});
+  const sup2 = await DB.add("suppliers", {nome:"Elettrotecnica Verdi", specializzazione:"Elettricista", telefono:"333 7654321", email:"", note:""});
+  const a1 = await DB.add("assets", {propertyId:p1, nome:"Caldaia condominiale", categoria:"idraulico", marca:"Vaillant", dataInstallazione:"2020-03-15", note:""});
+  const a2 = await DB.add("assets", {propertyId:p1, nome:"Ascensore blocco A", categoria:"ascensore", marca:"Otis", dataInstallazione:"2015-06-01", note:""});
+  const a3 = await DB.add("assets", {propertyId:p2, nome:"Impianto climatizzazione", categoria:"hvac", marca:"Daikin", dataInstallazione:"2022-01-10", note:""});
+  const in3 = new Date(); in3.setDate(in3.getDate()+3);
+  const inm5 = new Date(); inm5.setDate(inm5.getDate()-5);
+  const in20 = new Date(); in20.setDate(in20.getDate()+20);
+  await DB.add("interventions", {titolo:"Manutenzione annuale caldaia", propertyId:p1, assetId:a1, tipo:"preventiva", priorita:"media", stato:"da_fare", dataScadenza: in3.toISOString().slice(0,10), costo:120, fornitoreId:sup1, descrizione:"Controllo pressione, pulizia bruciatore, verifica scarico fumi.", checklist:[{testo:"Controllo pressione",fatto:false},{testo:"Pulizia bruciatore",fatto:false}], foto:[]});
+  await DB.add("interventions", {titolo:"Riparazione perdita ascensore", propertyId:p1, assetId:a2, tipo:"correttiva", priorita:"urgente", stato:"in_corso", dataScadenza: inm5.toISOString().slice(0,10), costo:450, fornitoreId:null, descrizione:"Segnalata perdita olio idraulico dal vano macchina.", checklist:[], foto:[]});
+  await DB.add("interventions", {titolo:"Verifica impianto elettrico", propertyId:p2, assetId:null, tipo:"ispezione", priorita:"bassa", stato:"da_fare", dataScadenza: in20.toISOString().slice(0,10), costo:0, fornitoreId:sup2, descrizione:"Verifica periodica quadro elettrico generale.", checklist:[], foto:[]});
+  await DB.add("interventions", {titolo:"Sostituzione filtri climatizzazione", propertyId:p2, assetId:a3, tipo:"preventiva", priorita:"media", stato:"completato", dataScadenza: null, dataCompletamento: todayISO(), costo:60, fornitoreId:null, descrizione:"", checklist:[], foto:[]});
+  await reloadAll();
+  renderCurrentTab();
+  toast("Dati di esempio caricati");
+});
+$("#btnWipe").addEventListener("click", async ()=>{
+  const ok = await confirmDialog("Cancellare tutti i dati?", "Questa operazione eliminerà definitivamente immobili, impianti, interventi e fornitori. Non è reversibile.");
+  if(!ok) return;
+  await Promise.all([DB.clear("properties"), DB.clear("assets"), DB.clear("interventions"), DB.clear("suppliers")]);
+  await reloadAll();
+  renderCurrentTab();
+  toast("Tutti i dati sono stati cancellati");
+});
+
+/* ==================================================================
+   PWA INSTALL PROMPT
+   ================================================================== */
+let deferredInstallPrompt = null;
+window.addEventListener("beforeinstallprompt", (e)=>{
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  showInstallBanner();
+});
+function showInstallBanner(){
+  if(window.matchMedia("(display-mode: standalone)").matches) return;
+  const host = $("#installBannerHost");
+  if(host.querySelector(".install-banner")) return;
+  const banner = el("div","install-banner");
+  banner.innerHTML = `<span>Installa ManuTrack sul dispositivo per usarla anche offline.</span><button class="btn btn-amber btn-sm">Installa</button>`;
+  banner.querySelector("button").addEventListener("click", async ()=>{
+    if(!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    banner.remove();
+  });
+  host.appendChild(banner);
+}
+
+/* ==================================================================
+   SERVICE WORKER
+   ================================================================== */
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=>{
+    navigator.serviceWorker.register("sw.js").catch(()=>{ /* offline registration best-effort */ });
+  });
+}
+
+/* ==================================================================
+   INIT
+   ================================================================== */
+async function init(){
+  await openDB();
+  await reloadAll();
+  buildNav();
+  switchTab("scadenze");
+}
+init();
+
+})();
+</script>
+</body>
+</html>
